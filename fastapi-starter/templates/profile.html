@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block title %}Profile - Todo App{% endblock %}
+
+{% block content %}
+    <h1>User Profile</h1>
+    
+    <div style="border: 1px solid #ccc; padding: 20px; margin: 20px 0; background-color: #f9f9f9; border-radius: 4px;">
+        <h2>Account Information</h2>
+        <p><strong>Username:</strong> {{ user }}</p>
+        <p><strong>Subscription Status:</strong> 
+            {% if user_subscribed %}
+                <span style="color: green;">✓ Active Premium Subscription</span>
+            {% else %}
+                <span style="color: orange;">Basic Account (No Subscription)</span>
+            {% endif %}
+        </p>
+    </div>
+    
+    {% if user_subscribed %}
+        <div style="border: 1px solid #28a745; padding: 20px; margin: 20px 0; background-color: #d4edda; border-radius: 4px;">
+            <h3>🎉 Premium Features Available</h3>
+            <ul>
+                <li>Unlimited todos</li>
+                <li>Advanced analytics</li>
+                <li>Priority support</li>
+                <li><a href="/premium">Access Premium Dashboard</a></li>
+                <li><a href="/api/premium-stats" target="_blank">View Premium Stats (JSON)</a></li>
+            </ul>
+        </div>
+    {% else %}
+        <div style="border: 1px solid #ffc107; padding: 20px; margin: 20px 0; background-color: #fff3cd; border-radius: 4px;">
+            <h3>Upgrade to Premium</h3>
+            <p>Unlock powerful features with a premium subscription!</p>
+            <a href="/subscribe" style="background-color: #007cba; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px;">Subscribe Now</a>
+        </div>
+    {% endif %}
+    
+    <div style="margin-top: 30px; border: 1px solid #17a2b8; padding: 20px; background-color: #d1ecf1; border-radius: 4px;">
+        <h3>Demo API Endpoints</h3>
+        <p>These demonstrate the dependency injection authentication system:</p>
+        <ul>
+            <li><a href="/api/user-data" target="_blank">/api/user-data</a> - Basic auth required</li>
+            {% if user_subscribed %}
+                <li><a href="/api/premium-stats" target="_blank">/api/premium-stats</a> - Subscription required</li>
+            {% else %}
+                <li>/api/premium-stats - <em>Subscribe to access</em></li>
+            {% endif %}
+        </ul>
+    </div>
+{% endblock %} 

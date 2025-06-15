@@ -1,10 +1,11 @@
-from fastapi import FastAPI, Depends, HTTPException, Form, Request
+from fastapi import FastAPI, Depends, HTTPException, Form, Request, status
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 import hashlib
 import stripe
 import os
-from typing import Optional
+from typing import Optional, Annotated
+from dataclasses import dataclass
 from dotenv import load_dotenv
 
 load_dotenv('../.env')
@@ -43,6 +44,11 @@ todos["subscribed-user"] = [
     {"text": "Another todo item", "done": False}
 ]
 
+@dataclass
+class User:
+    username: str
+    subscribed: bool
+
 def get_current_user(request: Request) -> Optional[str]:
     session_id = request.cookies.get("session_id")
     return user_sessions.get(session_id)
@@ -52,6 +58,37 @@ def require_auth(request: Request) -> str:
     if not user:
         raise HTTPException(status_code=401, detail="Not authenticated")
     return user
+
+# Dependency functions for FastAPI
+async def get_current_active_user(request: Request) -> User:
+    """Get the current authenticated user or redirect to login"""
+    session_id = request.cookies.get("session_id")
+    username = user_sessions.get(session_id)
+    
+    if not username:
+        raise HTTPException(
+            status_code=status.HTTP_303_SEE_OTHER,
+            detail="Authentication required",
+            headers={"Location": "/"}
+        )
+    
+    user_data = users.get(username, {})
+    return User(
+        username=username,
+        subscribed=user_data.get("subscribed", False)
+    )
+
+async def get_current_subscribed_user(
+    current_user: Annotated[User, Depends(get_current_active_user)]
+) -> User:
+    """Get the current user and ensure they have an active subscription"""
+    if not current_user.subscribed:
+        raise HTTPException(
+            status_code=status.HTTP_303_SEE_OTHER,
+            detail="Active subscription required",
+            headers={"Location": "/subscribe"}
+        )
+    return current_user
 
 @app.get("/", response_class=HTMLResponse)
 async def root(request: Request):
@@ -69,14 +106,14 @@ async def root(request: Request):
     })
 
 @app.get("/premium", response_class=HTMLResponse)
-async def premium(request: Request):
-    user = require_auth(request)
-    if not users[user]["subscribed"]:
-        return RedirectResponse(url="/", status_code=303)
-    
+async def premium(
+    request: Request,
+    current_user: Annotated[User, Depends(get_current_subscribed_user)]
+):
     return templates.TemplateResponse("premium.html", {
         "request": request,
-        "user": user
+        "user": current_user.username,
+        "user_subscribed": current_user.subscribed
     })
 
 @app.post("/register")
@@ -115,35 +152,43 @@ async def logout(request: Request):
     return response
 
 @app.post("/todos")
-async def add_todo(request: Request, todo: str = Form()):
-    user = require_auth(request)
-    if not users[user]["subscribed"]:
-        raise HTTPException(status_code=403, detail="Subscription required")
-    
-    if user not in todos:
-        todos[user] = []
-    todos[user].append({"text": todo, "done": False})
+async def add_todo(
+    request: Request,
+    current_user: Annotated[User, Depends(get_current_subscribed_user)],
+    todo: str = Form()
+):
+    if current_user.username not in todos:
+        todos[current_user.username] = []
+    todos[current_user.username].append({"text": todo, "done": False})
     return RedirectResponse(url="/", status_code=303)
 
 @app.post("/todos/{todo_id}/toggle")
-async def toggle_todo(request: Request, todo_id: int):
-    user = require_auth(request)
-    if 0 <= todo_id < len(todos[user]):
-        todos[user][todo_id]["done"] = not todos[user][todo_id]["done"]
+async def toggle_todo(
+    request: Request,
+    todo_id: int,
+    current_user: Annotated[User, Depends(get_current_subscribed_user)]
+):
+    if 0 <= todo_id < len(todos[current_user.username]):
+        todos[current_user.username][todo_id]["done"] = not todos[current_user.username][todo_id]["done"]
     return RedirectResponse(url="/", status_code=303)
 
 @app.get("/subscribe", response_class=HTMLResponse)
-async def subscribe_page(request: Request):
-    user = require_auth(request)
+async def subscribe_page(
+    request: Request,
+    current_user: Annotated[User, Depends(get_current_active_user)]
+):
     return templates.TemplateResponse("subscribe.html", {
         "request": request,
-        "user": user,
+        "user": current_user.username,
+        "user_subscribed": current_user.subscribed,
         "stripe_publishable_key": os.getenv("STRIPE_PUBLISHABLE_KEY")
     })
 
 @app.post("/create-checkout-session")
-async def create_checkout_session(request: Request):
-    user = require_auth(request)
+async def create_checkout_session(
+    request: Request,
+    current_user: Annotated[User, Depends(get_current_active_user)]
+):
     print(f"STRIPE_PRICE_ID: {os.getenv('STRIPE_PRICE_ID')}")
     checkout_session = stripe.checkout.Session.create(
         line_items=[{
@@ -153,7 +198,7 @@ async def create_checkout_session(request: Request):
         mode='subscription',
         success_url=request.url_for("subscription_success"),
         cancel_url=request.url_for("root"),
-        metadata={'username': user}
+        metadata={'username': current_user.username}
     )
     return RedirectResponse(url=checkout_session.url, status_code=303)
 
@@ -182,6 +227,46 @@ async def stripe_webhook(request: Request):
             users[username]["subscribed"] = True
     
     return {"status": "success"}
+
+# Demo routes showing different authentication levels
+@app.get("/profile", response_class=HTMLResponse)
+async def profile(
+    request: Request,
+    current_user: Annotated[User, Depends(get_current_active_user)]
+):
+    """Demo route - requires authentication only"""
+    return templates.TemplateResponse("profile.html", {
+        "request": request,
+        "user": current_user.username,
+        "user_subscribed": current_user.subscribed
+    })
+
+@app.get("/api/user-data")
+async def get_user_data(
+    current_user: Annotated[User, Depends(get_current_active_user)]
+):
+    """Demo API route - returns user data as JSON"""
+    return {
+        "username": current_user.username,
+        "subscribed": current_user.subscribed,
+        "todo_count": len(todos.get(current_user.username, []))
+    }
+
+@app.get("/api/premium-stats")
+async def get_premium_stats(
+    current_user: Annotated[User, Depends(get_current_subscribed_user)]
+):
+    """Demo API route - premium stats only for subscribed users"""
+    user_todos = todos.get(current_user.username, [])
+    completed = sum(1 for todo in user_todos if todo["done"])
+    
+    return {
+        "username": current_user.username,
+        "total_todos": len(user_todos),
+        "completed_todos": completed,
+        "completion_rate": round(completed / len(user_todos) * 100, 1) if user_todos else 0,
+        "premium_feature": "Advanced analytics enabled"
+    }
 
 if __name__ == "__main__":
     import uvicorn

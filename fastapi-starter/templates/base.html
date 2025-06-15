@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{% block title %}Todo App{% endblock %}</title>
+    <style>
+        .navbar {
+            background-color: #f8f9fa;
+            padding: 10px 20px;
+            border-bottom: 1px solid #dee2e6;
+            margin-bottom: 20px;
+        }
+        .navbar ul {
+            list-style-type: none;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            align-items: center;
+        }
+        .navbar li {
+            margin-right: 20px;
+        }
+        .navbar a {
+            text-decoration: none;
+            color: #007cba;
+            padding: 8px 12px;
+            border-radius: 4px;
+        }
+        .navbar a:hover {
+            background-color: #e9ecef;
+        }
+        .navbar .brand {
+            font-weight: bold;
+            font-size: 1.2em;
+            color: #333;
+        }
+        .navbar .user-info {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .navbar .logout-btn {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .navbar .logout-btn:hover {
+            background-color: #c82333;
+        }
+        .subscription-badge {
+            background-color: #28a745;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.8em;
+        }
+        .no-subscription-badge {
+            background-color: #ffc107;
+            color: #333;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.8em;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <ul>
+            <li><span class="brand">Todo App</span></li>
+            <li><a href="/">Todos</a></li>
+            {% if user %}
+                <li><a href="/profile">Profile</a></li>
+                <li><a href="/premium">Premium</a></li>
+                <li><a href="/subscribe">Subscribe</a></li>
+            {% endif %}
+            
+            <div class="user-info">
+                {% if user %}
+                    <span>Welcome, {{ user }}</span>
+                    {% if user_subscribed %}
+                        <span class="subscription-badge">Premium</span>
+                    {% else %}
+                        <span class="no-subscription-badge">Basic</span>
+                    {% endif %}
+                    <form method="post" action="/logout" style="display: inline;">
+                        <button type="submit" class="logout-btn">Logout</button>
+                    </form>
+                {% else %}
+                    <span>Not logged in</span>
+                {% endif %}
+            </div>
+        </ul>
+    </nav>
+
+    <div style="padding: 0 20px;">
+        {% block content %}{% endblock %}
+    </div>
+</body>
+</html> 
