@@ -1,5 +1,5 @@
 # web-app-starter
 
- [ ] fastapi/react
- [ ] fastapi/htmx
- [ ] beeware
+[ ] fastapi/react
+[ ] fastapi/htmx
+[ ] beeware
