@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Todo App - {{ user }}</title>
+</head>
+<body>
+    <h1>Todo App - Welcome {{ user }}</h1>
+    
+    <form method="post" action="/logout" style="float: right;">
+        <button type="submit">Logout</button>
+    </form>
+    
+    <div style="clear: both;"></div>
+    
+    {% if not user_subscribed %}
+        <p>You need a subscription to add todos. <a href="/subscribe">Subscribe now</a></p>
+    {% else %}
+        <form method="post" action="/todos">
+            <input type="text" name="todo" placeholder="Enter new todo" required>
+            <button type="submit">Add Todo</button>
+        </form>
+        
+        <h2>Your Todos:</h2>
+        <ul>
+        {% for todo in todos %}
+            <li>
+                <form method="post" action="/todos/{{ loop.index0 }}/toggle" style="display: inline;">
+                    <button type="submit">{{ "✓" if todo.done else "○" }}</button>
+                </form>
+                <span {% if todo.done %}style="text-decoration: line-through;"{% endif %}>
+                    {{ todo.text }}
+                </span>
+            </li>
+        {% endfor %}
+        </ul>
+    {% endif %}
+    
+    <a href="/subscribe">Manage Subscription</a>
+</body>
+</html> 

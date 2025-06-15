@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Subscribe - Todo App</title>
+    <script src="https://js.stripe.com/v3/"></script>
+</head>
+<body>
+    <h1>Subscribe to Todo App</h1>
+    <p>Welcome {{ user }}! Subscribe to unlock todo functionality.</p>
+    
+    <form method="post" action="/create-checkout-session">
+        <h2>Monthly Subscription - $5/month</h2>
+        <p>Unlock unlimited todos with our premium subscription.</p>
+        <button type="submit">Subscribe Now</button>
+    </form>
+    
+    <a href="/">Back to Todos</a>
+</body>
+</html> 
