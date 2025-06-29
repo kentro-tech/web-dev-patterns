@@ -1,0 +1,23 @@
+[project]
+name = "authentication-example"
+version = "0.1.0"
+description = "Minimal magic link authentication with FastAPI and Air"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "fastapi",
+    "air",
+    "sendgrid",
+    "python-multipart",
+    "itsdangerous",
+]
+
+[tool.uv]
+dev-dependencies = [
+    "pytest",
+    "httpx",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

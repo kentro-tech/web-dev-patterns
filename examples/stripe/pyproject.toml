@@ -1,0 +1,22 @@
+[project]
+name = "stripe-example"
+version = "0.1.0"
+description = "Minimal Stripe integration with FastAPI and Air"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "fastapi",
+    "air",
+    "stripe",
+    "python-multipart",
+]
+
+[tool.uv]
+dev-dependencies = [
+    "pytest",
+    "httpx",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
