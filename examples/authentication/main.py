@@ -7,6 +7,9 @@ from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
 from itsdangerous import URLSafeTimedSerializer, BadTimeSignature, SignatureExpired
 from datetime import datetime
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = FastAPI()
 app.add_middleware(SessionMiddleware, secret_key=os.getenv("SESSION_SECRET", "dev-secret-key"))
@@ -27,6 +30,8 @@ async def index(request: Request):
         air.Body(
             air.H1(f"Welcome, {email}"),
             air.P("You are logged in." if email else "You are not logged in."),
+            air.A("View Protected Content", href="/protected") if email else '',
+            air.Br() if email else '',
             air.A("Logout", href="/logout") if email else air.A("Login", href="/login")
         )
     )
@@ -106,7 +111,34 @@ async def verify_token(request: Request, token: str):
         raise HTTPException(status_code=400, detail="Invalid link")
 
 
+@app.get("/protected", response_class=air.TagResponse)
+async def protected(request: Request):
+    email = request.session.get("email")
+    
+    if not email:
+        return RedirectResponse("/login", status_code=303)
+    
+    logged_in_at = request.session.get("logged_in_at", "Unknown")
+    
+    return air.Html(
+        air.Head(air.Title("Protected Content")),
+        air.Body(
+            air.H1("Protected Content"),
+            air.P(f"Hello, {email}!"),
+            air.P("This page is only accessible to authenticated users."),
+            air.P(f"You logged in at: {logged_in_at}"),
+            air.Hr(),
+            air.A("Back to Home", href="/")
+        )
+    )
+
+
 @app.get("/logout")
 async def logout(request: Request):
     request.session.clear()
     return RedirectResponse("/", status_code=303)
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

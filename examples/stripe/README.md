@@ -16,23 +16,22 @@ uv sync
 cp .env.example .env
 # Edit .env with your Stripe keys
 
+# Generate a secure SESSION_SECRET:
+python -c "import secrets; print(secrets.token_urlsafe(32))"
+# Copy the output to SESSION_SECRET in .env
+
+# Get webhook secret and create listener 
+stripe listen --forward-to localhost:8000/webhook
+
 # Run
 fastapi dev main.py
-```
-
-## Get Stripe Keys
-
-1. Sign up at https://stripe.com
-2. Get test keys from https://dashboard.stripe.com/test/apikeys
-3. For webhooks locally:
-```bash
-stripe listen --forward-to localhost:8000/webhook
 ```
 
 ## Routes
 
 - `/` - Home page with login/payment options
 - `/login` - Login form (password: `password`)
+- `/protected` - Protected content (requires subscription)
 - `/create-checkout-session` - Create Stripe payment
 - `/success` - Payment success page
 - `/webhook` - Stripe webhook endpoint

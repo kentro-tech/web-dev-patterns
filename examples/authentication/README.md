@@ -16,6 +16,10 @@ uv sync
 cp .env.example .env
 # Edit .env with your SendGrid API key
 
+# Generate secure secrets:
+python -c "import secrets; print(secrets.token_urlsafe(32))"
+# Copy to SESSION_SECRET and TOKEN_SECRET in .env
+
 # Run
 fastapi dev main.py
 ```
@@ -30,6 +34,7 @@ fastapi dev main.py
 
 - `/` - Home page showing auth status
 - `/login` - Email entry for magic link
+- `/protected` - Protected content (requires authentication)
 - `/auth/verify` - Magic link verification
 - `/logout` - Clear session
 

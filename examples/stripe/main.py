@@ -4,7 +4,9 @@ import air
 from fastapi import FastAPI, Request, HTTPException, Form
 from fastapi.responses import RedirectResponse
 from starlette.middleware.sessions import SessionMiddleware
+from dotenv import load_dotenv
 
+load_dotenv()
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 webhook_secret = os.getenv("STRIPE_WEBHOOK_SECRET")
 
@@ -24,6 +26,8 @@ async def index(request: Request):
                 action="/create-checkout-session",
                 method="post"
             ),
+            air.A("Protected Content", href="/protected"),
+            air.Br(),
             air.A("Logout", href="/logout")
         )
     else:
@@ -71,6 +75,40 @@ async def logout(request: Request):
     return RedirectResponse("/", status_code=303)
 
 
+@app.get("/protected", response_class=air.TagResponse)
+async def protected(request: Request):
+    username = request.session.get("username")
+    if not username:
+        return RedirectResponse("/login", status_code=303)
+    
+    # Check if user has active subscription
+    has_subscription = request.session.get("has_subscription", False)
+    
+    if has_subscription:
+        body = (
+            air.H1("Protected Content"),
+            air.P("You have an active subscription!"),
+            air.P("This content is only available to subscribers."),
+            air.A("Back to Home", href="/")
+        )
+    else:
+        body = (
+            air.H1("Subscription Required"),
+            air.P("You need an active subscription to access this content."),
+            air.Form(
+                air.Button("Subscribe Now", type="submit"),
+                action="/create-checkout-session",
+                method="post"
+            ),
+            air.A("Back to Home", href="/")
+        )
+    
+    return air.Html(
+        air.Head(air.Title("Protected Content")),
+        air.Body(*body)
+    )
+
+
 @app.post("/create-checkout-session")
 async def create_checkout_session(request: Request):
     if not request.session.get("username"):
@@ -90,8 +128,8 @@ async def create_checkout_session(request: Request):
                 'quantity': 1,
             }],
             mode='payment',
-            success_url=request.url_for('success') + '?session_id={CHECKOUT_SESSION_ID}',
-            cancel_url=request.url_for('cancel'),
+            success_url=str(request.url_for('success')) + '?session_id={CHECKOUT_SESSION_ID}',
+            cancel_url=str(request.url_for('cancel')),
         )
         return RedirectResponse(checkout_session.url, status_code=303)
     except Exception as e:
@@ -100,11 +138,17 @@ async def create_checkout_session(request: Request):
 
 @app.get("/success", response_class=air.TagResponse)
 async def success(request: Request, session_id: str):
+    # Mark user as having subscription
+    request.session["has_subscription"] = True
+    
     return air.Html(
         air.Head(air.Title("Payment Success")),
         air.Body(
             air.H1("Payment Successful!"),
             air.P(f"Session ID: {session_id}"),
+            air.P("You now have access to protected content!"),
+            air.A("View Protected Content", href="/protected"),
+            air.Br(),
             air.A("Back to Home", href="/")
         )
     )
@@ -138,5 +182,13 @@ async def stripe_webhook(request: Request):
     if event['type'] == 'checkout.session.completed':
         session = event['data']['object']
         print(f"Payment completed for session: {session['id']}")
+        
+        # In a real app, you'd store this in a database
+        # For demo purposes, we'll use session storage
+        # Note: This is just for demonstration - use a proper database in production
     
     return {"status": "success"}
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
