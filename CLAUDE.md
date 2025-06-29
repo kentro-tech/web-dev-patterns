@@ -1,194 +1,195 @@
-A FastAPI-powered breath of fresh air in Python web development.
+# Air Web App Starter - LLM Quick Reference
 
-Current Features
+## Core Setup
 
-Designed to work with FastAPI so you can have your API and web pages server from one app
-HTML generation from jinja2 or Python classes. Pick one or both!
-⁠Shortcut Response class and fastapi tags
-Built from the beginning with ⁠HTMX in mind
-⁠Shortcut utility functions galore
-Static site generation
-⁠Serious documentation powered by material-for-mkdocs
-Lots of tests
-Planned features
+```bash
+# Project setup
+uv venv
+source .venv/bin/activate  # Always activate before running
+uv sync                     # Install from pyproject.toml
+fastapi dev main.py         # Run with auto-reload
+```
 
-⁠pydantic-powered html forms
-⁠Shortcut Response class for jinja2
-Installation
+## Basic Air App
 
-pip install air
-Basic usage
-
-# main.py
+```python
+import air
 from fastapi import FastAPI
-from air.responses import TagResponse
-import air
 
-app = FastAPI()
+app = FastAPI()  # or app = air.Air() for HTML-only
 
-
-@app.get("/")
+@app.get("/", response_class=air.TagResponse)
 async def index():
-    return air.Html(air.H1("Hello, world!", style="color: blue;"))
-Call with fastapi CLI:
+    return air.Html(
+        air.Head(air.Title("My App")),
+        air.Body(
+            air.H1("Hello World"),
+            air.P("Content here")
+        )
+    )
+```
 
+## Session-Based Auth Pattern
 
-fastapi dev
-Generate HTML and API
-For when you need FastAPI docs but without the web pages appearing in the docs:
+```python
+from starlette.middleware.sessions import SessionMiddleware
+from itsdangerous import URLSafeTimedSerializer
 
+# Setup
+app.add_middleware(SessionMiddleware, secret_key=os.getenv("SESSION_SECRET"))
+serializer = URLSafeTimedSerializer(os.getenv("TOKEN_SECRET"))
 
-from fastapi import FastAPI
-import air
+# Magic link flow
+@app.post("/login")
+async def send_magic_link(email: str = Form()):
+    token = serializer.dumps({"email": email})
+    # Send token via SendGrid/SMTP
+    
+@app.get("/auth/verify")
+async def verify_token(request: Request, token: str):
+    data = serializer.loads(token, max_age=900)  # 15 min
+    request.session["email"] = data["email"]
+    return RedirectResponse("/")
 
-# API app
-app = FastAPI()
-# HTML page app
-html = air.Air()
+# Protected routes
+@app.get("/protected")
+async def protected(request: Request):
+    if not request.session.get("email"):
+        return RedirectResponse("/login")
+    # Show protected content
+```
 
-@app.get("/api")
-async def read_root():
-    return {"Hello": "World"}
+## Stripe Integration Pattern
 
+```python
+import stripe
+stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 
-@html.get("/", response_class=air.TagResponse)
-async def index():
-    return air.H1("Welcome to Air")
+@app.post("/create-checkout-session")
+async def create_checkout(request: Request):
+    session = stripe.checkout.Session.create(
+        payment_method_types=['card'],
+        line_items=[{
+            'price_data': {
+                'currency': 'usd',
+                'product_data': {'name': 'Product'},
+                'unit_amount': 2000,  # $20.00
+            },
+            'quantity': 1,
+        }],
+        mode='payment',
+        success_url=str(request.url_for('success')) + '?session_id={CHECKOUT_SESSION_ID}',
+        cancel_url=str(request.url_for('cancel')),
+    )
+    return RedirectResponse(session.url)
 
-# Combine into one app
-app.mount("/", html)
-URLs to see the results:
+# Webhook for payment confirmation
+@app.post("/webhook")
+async def stripe_webhook(request: Request):
+    payload = await request.body()
+    sig = request.headers.get('stripe-signature')
+    event = stripe.Webhook.construct_event(payload, sig, webhook_secret)
+    
+    if event['type'] == 'checkout.session.completed':
+        # Update user's subscription status
+```
 
-http://127.0.0.1:8000/
-http://127.0.0.1:8000/api
-http://127.0.0.1:8000/docs
+## Environment Management
 
+```bash
+# .env file (never commit)
+SESSION_SECRET=<use: python -c "import secrets; print(secrets.token_urlsafe(32))">
+TOKEN_SECRET=<same as above>
+STRIPE_SECRET_KEY=sk_test_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+SENDGRID_API_KEY=SG...
+FROM_EMAIL=noreply@example.com
+APP_URL=http://localhost:8000
+```
 
+```python
+# Load in main.py
+from dotenv import load_dotenv
+load_dotenv()
+```
 
-uickstart
-A Minimal Application
-A minimal Air application:
+## Project Structure
 
+```
+myapp/
+├── .env              # Secrets (gitignored)
+├── .env.example      # Template for developers
+├── pyproject.toml    # Dependencies via UV
+├── main.py           # FastAPI app
+└── uv.lock          # Locked dependencies
+```
 
-Air Tags
-Jinja2
-main.py
+## pyproject.toml Template
 
-import air
+```toml
+[project]
+name = "myapp"
+version = "0.1.0"
+requires-python = ">=3.9"
+dependencies = [
+    "fastapi",
+    "air",
+    "python-multipart",    # For Form() handling
+    "python-dotenv",       # Environment vars
+    "sendgrid",           # Magic link emails
+    "itsdangerous",       # Token signing
+    "stripe",             # Payments
+]
 
-app = air.Air()
+[tool.uv]
+dev-dependencies = [
+    "pytest",
+    "httpx",
+]
+```
 
-@app.get('/')
-async def index():
-    return air.H1('Hello, world')
-So what does this code do?
+## Common Patterns
 
-First we import the air project.
-Next we instantiate the Air app. air.Air is just a conveinance wrapper around fastapi.FastAPI that sets the default_response_class to be air.TagResponse
-We define a GET route using @api.get, with comes with a response class of TagResponse. Now, when we return Air Tags, they are automatically rendered as HTML
-We return air.H1, which renders as an <h1></h1> tag. The response type is text/html, so browsers display web pages.
-
-Running the Application
-To run your FastAPI application with uvicorn:
-
-
-uvicorn main:app --reload
-Where:
-
-main is the name of your Python file (main.py)
-app is the name of your FastAPI instance
---reload enables auto-reloading when you make changes to your code (useful for development)
-Once the server is running, open your browser and navigate to:
-
-http://localhost:8000 - Your application
-
-
-Air Tags
-Air Tags are a fast, expressive way to generate HTML. Instead of a template language, Air Tags use Python classes to represent HTML elements. This allows leveraging Python's capabilities to generate content..
-
-What are Air Tags?
-Air Tags are Python classes that render HTML. They can be combined to render web pages or small components. Air Tags are typed and documented, working well with any code completion tool.
-
-How Air Tags work
-Used individually or combined into a greater whole, every Air Tag includes a render() method. When the render method is called, it returns the HTML representation of the Air Tag, as well as all the children of the Air Tag.
-
-This example:
-
-
->>> from air import Article, H1, P
->>> content = Article(
-...     H1("Air Tags"),
-...     P("Air Tags are a fast, expressive way to generate HTML.",
-...             cls="subtitle")
-... )
->>> content
-<air.tags.Article at 0x1052f2cf0>
->>> content.render()
-This is the output of the render() method for the example above:
-
-
-<article>
-    <h1>Air Tags</h1>
-    <p class="subtitle">Air Tags are a fast, expressive way to generate HTML.</p>
-</article>
-Works well with SVGs
-Unlike HTML, SVG tags are case-sensitive. You can access SVG tags by importing them from the air.svg module. Here's a simple example:
-
-
-from air import svg
-
-svg.Svg(
-    svg.Circle(cx='50', cy='50', r='40', fill='blue'),
-    width='100',
-    height='100'
+### Forms
+```python
+air.Form(
+    air.Input(type="email", name="email", required=True),
+    air.Button("Submit", type="submit"),
+    action="/submit",
+    method="post"
 )
-This will render the following SVG:
+```
 
+### Conditional Content
+```python
+if request.session.get("user"):
+    content = air.A("Logout", href="/logout")
+else:
+    content = air.A("Login", href="/login")
+```
 
-<svg width="100" height="100">
-  <circle cx="50" cy="50" r="40" fill="blue" />
-</svg>
-Custom Air Tags
-The best way to define your own Air Tags is to subclass the air.Tag class. Here's a simple example:
-
-
-from air import Tag
-
-class Tasty(Tag):
-    pass
-Let's instantiate this class and call its render() method:
-
-
-Tasty('Ice Cream', cls='dessert').render()
-This will produce the following HTML:
-
-
-<awesome class="desert">Ice Cream</awesome>
-Functions as Custom Air Tags
-Subclasses are not the only way to create custom Air Tags. You can also use functions to create Air Tags. This is particularly useful for putting together components quickly without needing to define a class. Here's an example of a function that creates a custom Air Tag for a picocss card:
-
-
-def card(*content, header:str, footer:str):
+### Custom Components
+```python
+def card(header: str, *content):
     return air.Article(
         air.Header(header),
-        *content,
-        air.Footer(footer)
+        *content
     )
-We can use this function to create a card:
+```
 
+## Quick Commands
 
-card(
-    air.P("This is a card with some content."),
-    air.P("It can have multiple paragraphs."),
-    header="Card Header",
-    footer="Card Footer",
-).render()
-Which produces the following HTML:
+```bash
+# Add packages
+uv add package-name
+uv add --dev pytest
 
+# Run tests
+pytest
 
-<article>
-    <header>Card Header</header>
-    <p>This is a card with some content.</p>
-    <p>It can have multiple paragraphs.</p>
-    <footer>Card Footer</footer>
-</article>
+# Stripe webhook testing
+stripe listen --forward-to localhost:8000/webhook
+
+# Generate secrets
+python -c "import secrets; print(secrets.token_urlsafe(32))"
+```
