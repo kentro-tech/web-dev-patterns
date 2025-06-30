@@ -12,7 +12,7 @@ load_dotenv()
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 webhook_secret = os.getenv("STRIPE_WEBHOOK_SECRET")
 
-# Initialize password hasher
+# Initialize password hasher - best practice to use a proper password hasher
 ph = PasswordHasher()
 
 # In-memory user store (in production, use a proper database)
@@ -25,7 +25,7 @@ app.add_middleware(SessionMiddleware, secret_key=os.getenv("SESSION_SECRET", "de
 @app.get("/", response_class=air.TagResponse)
 async def index(request: Request):
     username = request.session.get("username")
-    
+
     if username:
         body = (
             air.H1(f"Welcome, {username}"),
@@ -77,10 +77,6 @@ async def login(request: Request, username: str = Form(), password: str = Form()
     
     try:
         ph.verify(users[username]["password_hash"], password)
-        # Check if we need to rehash (e.g., if parameters changed)
-        if ph.check_needs_rehash(users[username]["password_hash"]):
-            users[username]["password_hash"] = ph.hash(password)
-        
         request.session["username"] = username
         return RedirectResponse("/", status_code=303)
     except VerifyMismatchError:
