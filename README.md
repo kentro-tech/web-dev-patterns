@@ -1,4 +1,4 @@
-# Minimal Examples of Annoying Patterns
+# Minimal Examples of Patterns
 
 - UV
 - Stripe
