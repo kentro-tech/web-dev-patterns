@@ -14,7 +14,7 @@ load_dotenv()
 app = FastAPI()
 app.add_middleware(SessionMiddleware, secret_key=os.getenv("SESSION_SECRET", "dev-secret-key"))
 
-serializer = URLSafeTimedSerializer(os.getenv("TOKEN_SECRET", "dev-token-secret"))
+serializer = URLSafeTimedSerializer(os.getenv("TOKEN_SECRET"))
 sg = SendGridAPIClient(os.getenv("SENDGRID_API_KEY"))
 
 FROM_EMAIL = os.getenv("FROM_EMAIL")
