@@ -21,40 +21,34 @@ A minimal example demonstrating Mux integration with FastAPI and Air for live st
 
 ```bash
 cp .env.example .env
-
 # Edit .env with your credentials:
-# MUX_TOKEN_ID=your_token_id
-# MUX_TOKEN_SECRET=your_token_secret
-# SESSION_SECRET=your_session_secret
-```
-
-### 3. Install and Run
-
-```bash
 uv sync
-fastapi dev main.py
+python main.py
 ```
 
 ## Usage
 
 ### Live Streaming
 
+> [!WARNING]
+> You must have this deployed to live stream, as streaming services can't reach localhost!  You can deploy the project as is to railway if you'd like to test it.
+
 1. Login with any email
 2. Go to "Live Streaming" → "Create New Stream"
-3. Use the RTMP URL and Stream Key in OBS:
+3. Use the RTMP URL and Stream Key in OBS or Zoom:
    - Server: `rtmp://live.mux.com/app`
    - Stream Key: (from the app)
 4. Click "Go Live" to activate the stream
+
+> [!NOTE] 
+> There is a configuration setting in zoom account to enable streaming that you need to do to have the option available to you
 
 ### Video Upload
 
 1. Go to "Video Upload"
 2. Get an upload URL
-3. Upload your video:
-   ```bash
-   curl -X PUT "upload_url" -T video.mp4
-   ```
-4. Click "Check Status" until ready
+3. Upload your video using the curl command provided (at the end, change to point to your video file)
+4. Click "Check Status"
 5. View in "Browse Videos"
 
 ## Architecture
