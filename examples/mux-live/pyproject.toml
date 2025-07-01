@@ -1,0 +1,16 @@
+[project]
+name = "mux-live-example"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi",
+    "air",
+    "python-multipart",
+    "python-dotenv",
+    "mux-python",
+    "itsdangerous",
+    "uvicorn>=0.35.0",
+]
+
+[tool.uv]
+dev-dependencies = []
