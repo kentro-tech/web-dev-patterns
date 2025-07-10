@@ -1,0 +1,15 @@
+[project]
+name = "google-oauth"
+version = "0.1.0"
+description = "Minimal Google OAuth example with Air"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "air>=0.11.0",
+    "fastapi[standard]>=0.116.0",
+    "python-multipart",
+    "python-dotenv",
+    "httpx",
+    "itsdangerous",
+    "authlib",
+]
